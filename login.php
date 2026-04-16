@@ -1,52 +1,68 @@
-<?php
-session_start();
-include "db.php";
+<?php 
+include 'config.php';
+include 'layout.php';
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+$error = "";
 
-    $correo = trim($_POST['correo'] ?? '');
-    $password = $_POST['password'] ?? '';
+if(isset($_POST['login'])){
 
-    if ($correo === '' || $password === '') {
-        die("Campos vacíos");
-    }
+    $email = $_POST['email'];
+    $password = $_POST['password'];
 
-    $stmt = $conn->prepare("SELECT * FROM users WHERE correo = ?");
-    $stmt->bind_param("s", $correo);
+    $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
+    $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
 
-    if ($result->num_rows === 1) {
+    if($result->num_rows > 0){
+
         $user = $result->fetch_assoc();
 
-        if (password_verify($password, $user['password'])) {
-            $_SESSION['usuario'] = $user['usuario'];
-            header("Location: index.php");
-            exit;
+        if(password_verify($password, $user['password'])){
+
+            $_SESSION['user'] = [
+                'id' => $user['id'],
+                'name' => $user['name'],
+                'email' => $user['email'],
+                'role' => $user['role']
+            ];
+
+            if($user['role'] == 'admin'){
+                header("Location: admin.php");
+            } else {
+                header("Location: index.php");
+            }
+            exit();
+
         } else {
-            echo "Contraseña incorrecta";
+            $error = "Incorrect password.";
         }
+
     } else {
-        echo "Usuario no encontrado";
+        $error = "Email not found.";
     }
 }
 ?>
 
-<!DOCTYPE html>
-<html>
-<head><title>Login</title></head>
-<body>
+<a href="index.php" class="btn-back">⬅ Volver</a>
 
-<h2>Iniciar sesión</h2>
+<h1 class="page-title">🔐 Login</h1>
+
+<div class="form-container">
+
+<?php if($error != ""){ ?>
+<div class="error-box"><?php echo $error; ?></div>
+<?php } ?>
 
 <form method="POST">
-<input type="email" name="correo" placeholder="Correo" required>
-<input type="password" name="password" placeholder="Contraseña" required>
-<button type="submit">Entrar</button>
+
+<input type="email" name="email" placeholder="Email" required>
+<input type="password" name="password" placeholder="Password" required>
+
+<button type="submit" name="login" class="main-btn">Login</button>
+
 </form>
 
-<br>
-<a href="forgot.php">¿Olvidaste tu contraseña?</a>
+</div>
 
-</body>
-</html>
+<?php include 'footer.php'; ?>
